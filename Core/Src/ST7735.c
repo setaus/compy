@@ -6,11 +6,16 @@
    http://creativecommons.org/licenses/by/4.0/
 */
 
-#include <SPI.h>
+//#include <SPI.h>
+#include <stdint.h>
+#include <stdBOOL.h>
+#include <stdlib.h>
+
+#include <ST7735Hal.h>
 
 // Arduino pin numbers. Change these for your display connections
-int const cs = 0; // TFT display SPI chip select pin
-int const dc = 1; // TFT display data/command select pin
+//int const cs = 0; // TFT display SPI chip select pin
+//int const dc = 1; // TFT display data/command select pin
 
 // Display parameters - uncomment the line for the one you want to use
 
@@ -33,7 +38,7 @@ int const dc = 1; // TFT display data/command select pin
 // int const xsize = 160, ysize = 128, xoff = 0, yoff = 0, invert = 0, rotate = 0, bgr = 1;
 
 // AliExpress 1.8" 160x128 display (blue PCB)
-// int const xsize = 160, ysize = 128, xoff = 0, yoff = 0, invert = 0, rotate = 6, bgr = 0;
+int const xsize = 160, ysize = 128, xoff = 0, yoff = 0, invert = 0, rotate = 6, bgr = 0;
 
 // Adafruit 1.14" 240x135 display
 // int const xsize = 240, ysize = 135, xoff = 40, yoff = 53, invert = 1, rotate = 6, bgr = 0;
@@ -48,7 +53,7 @@ int const dc = 1; // TFT display data/command select pin
 // int const xsize = 240, ysize = 240, xoff = 0, yoff = 80, invert = 1, rotate = 5, bgr = 0;
 
 // AliExpress 1.54" 240x240 display
-int const xsize = 240, ysize = 240, xoff = 0, yoff = 80, invert = 1, rotate = 5, bgr = 0;
+//int const xsize = 240, ysize = 240, xoff = 0, yoff = 80, invert = 1, rotate = 5, bgr = 0;
 
 // Adafruit 1.9" 320x170 display
 // int const xsize = 320, ysize = 170, xoff = 0, yoff = 35, invert = 1, rotate = 0, bgr = 0;
@@ -63,7 +68,7 @@ int const xsize = 240, ysize = 240, xoff = 0, yoff = 80, invert = 1, rotate = 5,
 // int const xsize = 320, ysize = 240, xoff = 0, yoff = 0, invert = 0, rotate = 2, bgr = 1;
 
 // Character set for text - stored in program memory
-const uint8_t CharMap[96][6] PROGMEM = {
+const uint8_t CharMap[96][6] = {
 { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, 
 { 0x00, 0x00, 0x5F, 0x00, 0x00, 0x00 }, 
 { 0x00, 0x07, 0x00, 0x07, 0x00, 0x00 }, 
@@ -176,32 +181,33 @@ int scale = 1;     // Text scale
 
 // Send a byte to the display
 void Data (uint8_t d) {
-  digitalWrite(cs, LOW);
-  SPI.transfer(d);
-  digitalWrite(cs, HIGH);
+  digitalWrite(CS, LOW);
+  SPI_transfer(d);
+  digitalWrite(CS, HIGH);
 }
 
 // Send a command to the display
 void Command (uint8_t c) {
-  digitalWrite(dc, LOW);
+  digitalWrite(DC, LOW);
   Data(c);
-  digitalWrite(dc, HIGH);
+  digitalWrite(DC, HIGH);
 }
 
 // Send a command followed by two data words
 void Command2 (uint8_t c, uint16_t d1, uint16_t d2) {
-  digitalWrite(dc, LOW);
+  digitalWrite(DC, LOW);
   Data(c);
-  digitalWrite(dc, HIGH);
+  digitalWrite(DC, HIGH);
   Data(d1>>8); Data(d1); Data(d2>>8); Data(d2);
 }
   
 void InitDisplay () {
-  pinMode(dc, OUTPUT);
-  pinMode(cs, OUTPUT);
-  digitalWrite(cs, HIGH);  
-  digitalWrite(dc, HIGH);                  // Data
-  SPI.begin();
+	printf("%s\n", __FUNCTION__);
+  pinMode(DC, OUTPUT);
+  pinMode(CS, OUTPUT);
+  digitalWrite(CS, HIGH);
+  digitalWrite(DC, HIGH);                  // Data
+  SPI_begin();
   Command(0x01);                           // Software reset
   delay(250);                              // delay 250 ms
   Command(0x36); Data(rotate<<5 | bgr<<3); // Set orientation and rgb/bgr
@@ -212,11 +218,13 @@ void InitDisplay () {
 }
 
 void DisplayOn () {
+	printf("%s\n", __FUNCTION__);
   Command(0x29);                           // Display on
   delay(150);
 }
 
 void ClearDisplay () {
+	printf("%s\n", __FUNCTION__);
   Command2(CASET, yoff, yoff + ysize - 1);
   Command2(RASET, xoff, xoff + xsize - 1);
   Command(0x3A); Data(0x03);               // 12-bit colour
@@ -274,23 +282,32 @@ void FillRect (int w, int h) {
 }
 
 // Plot an ASCII character with bottom left corner at x,y
-void PlotChar (char c) {
-  int colour;
-  Command2(CASET, yoff+ypos, yoff+ypos+8*scale-1);
-  Command2(RASET, xoff+xpos, xoff+xpos+6*scale-1);
-  Command(RAMWR);
-  for (int xx=0; xx<6; xx++) {
-    int bits = pgm_read_byte(&CharMap[c-32][xx]);
-    for (int xr=0; xr<scale; xr++) {
-      for (int yy=0; yy<8; yy++) {
-        if (bits>>(7-yy) & 1) colour = fore; else colour = back;
-        for (int yr=0; yr<scale; yr++) {
-          Data(colour>>8); Data(colour & 0xFF);
-        }
-      }
-    }
-  }
-  xpos = xpos + 6*scale;
+void PlotChar (char c)
+{
+	int colour;
+	Command2(CASET, yoff+ypos, yoff+ypos+8*scale-1);
+	Command2(RASET, xoff+xpos, xoff+xpos+6*scale-1);
+	Command(RAMWR);
+	for (int xx=0; xx<6; xx++)
+	{
+		int bits = pgm_read_byte(&CharMap[c-32][xx]);
+		for (int xr=0; xr<scale; xr++)
+		{
+			for (int yy=0; yy<8; yy++)
+			{
+				if (bits>>(7-yy) & 1)
+					colour = fore;
+				else
+					colour = back;
+				for (int yr=0; yr<scale; yr++)
+				{
+					Data(colour>>8);
+					Data(colour & 0xFF);
+				}
+			}
+		}
+	}
+	xpos = xpos + 6*scale;
 }
 
 // Plot text starting at the current plot position
@@ -320,38 +337,49 @@ void TestChart () {
 }
 
 // Demos **********************************************
-
-void BarChart () {
-  int x1 = 15, y1 = 11;                    // Origin
-  MoveTo((xsize-x1-90)/2+x1, ysize-8); PlotText(PSTR("Sensor Readings"));
-  // Horizontal axis
-  int xinc = (xsize-x1)/20;
-  MoveTo(x1, y1); DrawTo(xsize-1, y1);
-  for (int i=0; i<=20; i=i+4) {
-    int mark = x1+i*xinc;
-    MoveTo(mark, y1); DrawTo(mark, y1-2);
-    // Draw histogram
-    if (i != 20) {
-      int bar = xinc*4/3;
-      fore = 0x001F;
-      for (int b=2; b>=0; b--) {
-        MoveTo(mark+bar*b-b+1,y1+1); FillRect(bar, 5+random(ysize-y1-20));
-        fore = fore<<6;
-      }
-      fore = 0xFFFF;
-    }
-    if (i > 9) MoveTo(mark-7, y1-11); else MoveTo(mark-3, y1-11);
-    PlotInt(i);
-  }
-  // Vertical axis
-  int yinc = (ysize-y1)/20;
-  MoveTo(x1, y1); DrawTo(x1, ysize-1);
-  for (int i=0; i<=20; i=i+5) {
-    int mark = y1+i*yinc;
-    MoveTo(x1, mark); DrawTo(x1-2, mark);
-    if (i > 9) MoveTo(x1-15, mark-4); else MoveTo(x1-9, mark-4);
-    PlotInt(i);
-  }
+void BarChart ()
+{
+	int x1 = 15, y1 = 11; // Origin
+	// Text
+	MoveTo((xsize-x1-90)/2+x1, ysize-8);
+	PlotText((uint8_t *)PSTR("Sensor Readings"));
+	// Horizontal axis
+	int xinc = (xsize-x1)/20;
+	MoveTo(x1, y1);
+	DrawTo(xsize-1, y1);
+	for (int i=0; i<=20; i=i+4)
+	{
+		int mark = x1+i*xinc;
+		MoveTo(mark, y1);
+		DrawTo(mark, y1-2);
+		// Draw histogram
+		if (i != 20)
+		{
+			int bar = xinc*4/3;
+			fore = 0x001F;
+			for (int b=2; b>=0; b--)
+			{
+				MoveTo(mark+bar*b-b+1,y1+1); FillRect(bar, 5+random_up_to(ysize-y1-20));
+				fore = fore<<6;
+			}
+			fore = 0xFFFF;
+		}
+		if (i > 9) MoveTo(mark-7, y1-11); else MoveTo(mark-3, y1-11);
+		PlotInt(i);
+	}
+	// Vertical axis
+	int yinc = (ysize-y1)/20;
+	MoveTo(x1, y1); DrawTo(x1, ysize-1);
+	for (int i=0; i<=20; i=i+5)
+	{
+		int mark = y1+i*yinc;
+		MoveTo(x1, mark); DrawTo(x1-2, mark);
+		if (i > 9)
+			MoveTo(x1-15, mark-4);
+		else
+			MoveTo(x1-9, mark-4);
+		PlotInt(i);
+	}
 }
 
 // Setup **********************************************
@@ -363,7 +391,7 @@ void setup() {
   MoveTo(0,0);
 }
 
-void loop () {
-  BarChart();
-  for (;;);
+void loop ()
+{
+	  BarChart();
 }
