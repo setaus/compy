@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <stdBOOL.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <ST7735Hal.h>
 
@@ -38,7 +40,7 @@
 // int const xsize = 160, ysize = 128, xoff = 0, yoff = 0, invert = 0, rotate = 0, bgr = 1;
 
 // AliExpress 1.8" 160x128 display (blue PCB)
-int const xsize = 160, ysize = 128, xoff = 0, yoff = 0, invert = 0, rotate = 6, bgr = 0;
+int const xsize = 160, ysize = 128, xoff = 1, yoff = 2, invert = 0, rotate = 6, bgr = 0;
 
 // Adafruit 1.14" 240x135 display
 // int const xsize = 240, ysize = 135, xoff = 40, yoff = 53, invert = 1, rotate = 6, bgr = 0;
@@ -179,10 +181,25 @@ int fore = 0xFFFF; // White
 int back = 0;      // Black
 int scale = 1;     // Text scale
 
+static uint8_t spi_buf[128*3];
+
+void SetFore(int f)
+{
+	fore = f;
+}
+
 // Send a byte to the display
 void Data (uint8_t d) {
   digitalWrite(CS, LOW);
-  SPI_transfer(d);
+  SPI_transfer(&d, 1);
+  digitalWrite(CS, HIGH);
+}
+
+// Send a byte to the display
+void Datas (int len)
+{
+  digitalWrite(CS, LOW);
+  SPI_transfer(spi_buf, len);
   digitalWrite(CS, HIGH);
 }
 
@@ -198,7 +215,11 @@ void Command2 (uint8_t c, uint16_t d1, uint16_t d2) {
   digitalWrite(DC, LOW);
   Data(c);
   digitalWrite(DC, HIGH);
-  Data(d1>>8); Data(d1); Data(d2>>8); Data(d2);
+  spi_buf[0] = d1>>8;
+  spi_buf[1] = d1;
+  spi_buf[2] = d2>>8;
+  spi_buf[3] = d2;
+  Datas(4);
 }
   
 void InitDisplay () {
@@ -229,10 +250,10 @@ void ClearDisplay () {
   Command2(RASET, xoff, xoff + xsize - 1);
   Command(0x3A); Data(0x03);               // 12-bit colour
   Command(RAMWR);
-  for (int i=0; i<xsize/2; i++) {
-    for (int j=0; j<ysize*3; j++) {
-      Data(0);
-    }
+  for (int i=0; i<xsize/2; i++)
+  {
+	  bzero(spi_buf,ysize*3);
+	  Datas(ysize*3);
   }
   Command(0x3A); Data(0x05);               // Back to 16-bit colour
 }
@@ -242,7 +263,8 @@ unsigned int Colour (int r, int g, int b) {
 }
 
 // Move current plot position to x,y
-void MoveTo (int x, int y) {
+void MoveTo (int x, int y)
+{
   xpos = x; ypos = y;
 }
 
@@ -250,7 +272,10 @@ void MoveTo (int x, int y) {
 void PlotPoint (int x, int y) {
   Command2(CASET, yoff+y, yoff+y);
   Command2(RASET, xoff+x, xoff+x);
-  Command(RAMWR); Data(fore>>8); Data(fore & 0xff);
+  Command(RAMWR);
+  spi_buf[0]=fore>>8;
+  spi_buf[1]=fore & 0xff;
+  Datas(2);
 }
 
 // Draw a line to x,y
@@ -258,27 +283,55 @@ void DrawTo (int x, int y) {
   int sx, sy, e2, err;
   int dx = abs(x - xpos);
   int dy = abs(y - ypos);
-  if (xpos < x) sx = 1; else sx = -1;
-  if (ypos < y) sy = 1; else sy = -1;
+  if (xpos < x)
+	  sx = 1;
+  else
+	  sx = -1;
+  if (ypos < y)
+	  sy = 1;
+  else
+	  sy = -1;
   err = dx - dy;
   for (;;) {
     PlotPoint(xpos, ypos);
-    if (xpos==x && ypos==y) return;
+    if (xpos==x && ypos==y)
+    	return;
     e2 = err<<1;
-    if (e2 > -dy) { err = err - dy; xpos = xpos + sx; }
-    if (e2 < dx) { err = err + dx; ypos = ypos + sy; }
+    if (e2 > -dy)
+    {
+    	err = err - dy;
+    	xpos = xpos + sx;
+    }
+    if (e2 < dx)
+    {
+    	err = err + dx;
+    	ypos = ypos + sy;
+    }
   }
 }
 
-void FillRect (int w, int h) {
-  Command2(CASET, ypos+yoff, ypos+yoff+h-1);
-  Command2(RASET, xpos+xoff, xpos+xoff+w-1);
-  Command(RAMWR);
-  for (int i=0; i<w; i++) {
-    for (int j=0; j<h; j++) {
-      Data(fore>>8); Data(fore & 0xff);
-    }
-  }
+void FillRect (int w, int h)
+{
+	Command2(CASET, ypos+yoff, ypos+yoff+h-1);
+	Command2(RASET, xpos+xoff, xpos+xoff+w-1);
+	Command(RAMWR);
+	for (int i=0; i<w; i++)
+	{
+		for (int j=0; j<h; j++)
+		{
+			spi_buf[j*2]=fore>>8;
+			spi_buf[j*2+1]=fore&0xff;
+		}
+		Datas(h*2);
+/*
+		for (int j=0; j<h; j++)
+		{
+			spi_buf[0]=fore>>8;
+			spi_buf[1]=fore&0xff;
+			Datas(2);
+		}
+		*/
+	}
 }
 
 // Plot an ASCII character with bottom left corner at x,y
@@ -291,21 +344,27 @@ void PlotChar (char c)
 	for (int xx=0; xx<6; xx++)
 	{
 		int bits = pgm_read_byte(&CharMap[c-32][xx]);
+		int idx=0;
 		for (int xr=0; xr<scale; xr++)
 		{
 			for (int yy=0; yy<8; yy++)
 			{
 				if (bits>>(7-yy) & 1)
+				{
 					colour = fore;
+				}
 				else
+				{
 					colour = back;
+				}
 				for (int yr=0; yr<scale; yr++)
 				{
-					Data(colour>>8);
-					Data(colour & 0xFF);
+					spi_buf[idx++]=colour>>8;
+					spi_buf[idx++]=colour&0xff;
 				}
 			}
 		}
+		Datas(scale*scale*8*2);
 	}
 	xpos = xpos + 6*scale;
 }
@@ -319,12 +378,28 @@ void PlotText(PGM_P p) {
   }
 }
 
-void PlotInt(int n) {
-  bool lead = false;
-  for (int d=10000; d>0; d = d/10) {
-    char j = (n/d) % 10;
-    if (j!=0 || lead || d==1) { PlotChar(j + '0'); lead = true; }
-  }
+void PlotInt(int n, bool plus)
+{
+	if (n<0)
+	{
+		PlotChar('-');
+		n=-n;
+	}
+	else if (n>0 && plus)
+	{
+		PlotChar('+');
+	}
+
+	bool lead = false;
+	for (int d=10000; d>0; d = d/10)
+	{
+		char j = (n/d) % 10;
+		if (j!=0 || lead || d==1)
+		{
+			PlotChar(j + '0');
+			lead = true;
+		}
+	}
 }
 
 void TestChart () {
@@ -365,7 +440,7 @@ void BarChart ()
 			fore = 0xFFFF;
 		}
 		if (i > 9) MoveTo(mark-7, y1-11); else MoveTo(mark-3, y1-11);
-		PlotInt(i);
+		PlotInt(i, false);
 	}
 	// Vertical axis
 	int yinc = (ysize-y1)/20;
@@ -378,7 +453,7 @@ void BarChart ()
 			MoveTo(x1-15, mark-4);
 		else
 			MoveTo(x1-9, mark-4);
-		PlotInt(i);
+		PlotInt(i, false);
 	}
 }
 

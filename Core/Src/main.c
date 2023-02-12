@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <ST7735.h>
 #include <ST7735Hal.h>
+#include <bar_graph.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -103,35 +104,92 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
-  digitalWrite(RST,0);
-  HAL_Delay(100);
-  digitalWrite(RST,1);
-  HAL_Delay(100);
+	digitalWrite(RST,0);
+	HAL_Delay(100);
+	digitalWrite(RST,1);
+	HAL_Delay(100);
 
-  HAL_ADC_Start(&hadc);
+	HAL_ADC_Start(&hadc);
 
-  setup();
-  printf("Hi1\n");
-  printf("Hi2\n");
-  printf("Hi3\n");
-  BarChart();
-  int a = 1000;
-  while (1)
-  {
-	  MoveTo(10,10);
-	  char buf[10];
-	  printf("yo\n");
-//	  sprintf(buf, "%d", HAL_ADC_GetValue(&hadc));
-	  sprintf(buf, "%d", a++);
-	  printf("yo2\n");
-	  printf("%s\n", buf);
-	  int t = -HAL_GetTick();
-	  PlotText(buf);
-	  t+= HAL_GetTick();
-	  printf("a %d\n",t);
-	  HAL_Delay(100);
-  }
+	int t = -HAL_GetTick();
+	setup();
+	t += HAL_GetTick();
+	printf("setup = %d (%d)\n", t, get_ctr());
+	t = -HAL_GetTick();
+//	BarChart();
+	t+= HAL_GetTick();
+	printf("loop = %d (%d)\n", t, get_ctr());
+	printf("Hi3\n");
+	int a = 1000;
 
+	MoveTo(10,10);
+	char buf[10];
+	printf("yo\n");
+	//	  sprintf(buf, "%d", HAL_ADC_GetValue(&hadc));
+	sprintf(buf, "%d", a++);
+	printf("yo2\n");
+	printf("%s\n", buf);
+
+	Tick_t ticks[]=	{
+			{0,-30},{20,-24},{40,-18},{60,-12},{80,-6},{100,0},{120,6},{140,12}
+	};
+	Tick_t ticks_red[]=	{
+			{0,-30},{20,-24},{40,-18},{60,-12},{80,-9},{100,-6},{120,-3},{140,0}
+	};
+	Bargraph_t bg_ina = {
+			.x1=10,.y1=10,.xs=140,.ys=15,
+			ticks, 8,
+	};
+	Bargraph_t bg_reda = {
+			.x1=10,.y1=30,.xs=140,.ys=15,
+			ticks_red, 8,
+	};
+
+	Bargraph_t bg_outa = {
+			.x1=10,.y1=50,.xs=140,.ys=15,
+			NULL, 8,
+	};
+	Bargraph_t bg_inb = {
+			.x1=10,.y1=70,.xs=140,.ys=15,
+			ticks, 8,
+	};
+	Bargraph_t bg_redb = {
+			.x1=10,.y1=90,.xs=140,.ys=15,
+			ticks_red, 8,
+	};
+	Bargraph_t bg_outb = {
+			.x1=10,.y1=110,.xs=140,.ys=15,
+			NULL, 0,
+	};
+
+	bargraph_init(&bg_ina);
+	bargraph_init(&bg_reda);
+	bargraph_init(&bg_outa);
+	bargraph_init(&bg_inb);
+	bargraph_init(&bg_redb);
+	bargraph_init(&bg_outb);
+
+	int db = 10;
+	while(1)
+	{
+		int inc = 2;
+		while (1)
+		{
+			db += inc;
+			bargraph_set(db);
+			HAL_Delay(10);
+			if (db > 150)
+				break;
+		}
+		while (1)
+		{
+			db -= inc;
+			bargraph_set(db);
+			HAL_Delay(10);
+			if (db < 11)
+				break;
+		}
+	}
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -329,13 +387,13 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi1.Init.CRCPolynomial = 7;
   hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
     Error_Handler();

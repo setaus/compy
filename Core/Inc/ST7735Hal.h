@@ -23,10 +23,11 @@ enum {
 };
 
 void SPI_begin();
-void SPI_transfer(uint8_t d);
+void SPI_transfer(uint8_t *d, int len);
 void delay(int t);
 
 void pinMode(int, int);
+int get_ctr();
 
 void digitalWrite(int pin, int state);
 

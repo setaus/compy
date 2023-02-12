@@ -47,9 +47,18 @@ void SPI_begin()
 {
 }
 
-void SPI_transfer(uint8_t d)
+int ctr = 0;
+
+int get_ctr()
 {
-	if (HAL_OK!=HAL_SPI_Transmit(&hspi1, &d, 1, 10))
+	int rc = ctr;
+	ctr=0;
+	return rc;
+}
+void SPI_transfer(uint8_t *d, int len)
+{
+	ctr++;
+	if (HAL_OK!=HAL_SPI_Transmit(&hspi1, d, len, 10))
 	{
 		printf("Failed HAL_SPI_Transmit\n");
 	}
