@@ -13,17 +13,22 @@
 
 
 void InitDisplay();
-void MoveTo (int x, int y);
-void PlotText(PGM_P p);
-void SetFore(int f);
+void ClearDisplay();
+void DisplayOn();
+
+//void InitDisplay();
 unsigned int Colour (int r, int g, int b);
-void FillRect (int w, int h);
+void SetFore(int f);
+void SetBack(int f);
+
+void MoveTo (int x, int y);
 void DrawTo (int x, int y);
+void FillRect (int w, int h);
+void PlotText(PGM_P p);
 void PlotInt(int n, bool plus);
 
 
-void setup();
-void BarChart();
+//void BarChart();
 
 
 #endif /* INC_ST7735_H_ */

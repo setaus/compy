@@ -17,6 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <bargraph.h>
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -24,7 +25,6 @@
 #include <stdio.h>
 #include <ST7735.h>
 #include <ST7735Hal.h>
-#include <bar_graph.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -105,88 +105,102 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
 	digitalWrite(RST,0);
-	HAL_Delay(100);
+	HAL_Delay(10);
 	digitalWrite(RST,1);
-	HAL_Delay(100);
+	HAL_Delay(10);
 
 	HAL_ADC_Start(&hadc);
 
-	int t = -HAL_GetTick();
-	setup();
-	t += HAL_GetTick();
-	printf("setup = %d (%d)\n", t, get_ctr());
-	t = -HAL_GetTick();
-//	BarChart();
-	t+= HAL_GetTick();
-	printf("loop = %d (%d)\n", t, get_ctr());
-	printf("Hi3\n");
-	int a = 1000;
+//	setup();
+	InitDisplay();
+	ClearDisplay();
+	DisplayOn();
 
-	MoveTo(10,10);
-	char buf[10];
-	printf("yo\n");
-	//	  sprintf(buf, "%d", HAL_ADC_GetValue(&hadc));
-	sprintf(buf, "%d", a++);
-	printf("yo2\n");
-	printf("%s\n", buf);
+	int background = Colour(15,15,15);
+	int variation = Colour(10,10,10);
+	int tick = Colour(200,200,200);
+	int bar = Colour(0,255,0);
+	// background
+	MoveTo(0,0);
+	SetFore(background);
+	SetBack(background);
+	FillRect(160,128);
+
 
 	Tick_t ticks[]=	{
-			{0,-30},{20,-24},{40,-18},{60,-12},{80,-6},{100,0},{120,6},{140,12}
+			{0,-40},{5,-30},{10,-20},{15,-10},{20,0},{25,+10},{30,+20}
 	};
 	Tick_t ticks_red[]=	{
-			{0,-30},{20,-24},{40,-18},{60,-12},{80,-9},{100,-6},{120,-3},{140,0}
+			{0,-18},{5,-15},{10,-12},{15,-9},{20,-6},{25,-3},{30,0}
 	};
 	Bargraph_t bg_ina = {
-			.x1=10,.y1=10,.xs=140,.ys=15,
-			ticks, 8,
+			.name="IN",
+			.x1=20, .y1=84+25, .leds=31, .ys=15, .border=3,
+			.back_col=background, .var_col=variation, .tick_col=tick, .bar_col=bar,
+			.ticks=ticks, .num_ticks=7, .draw_ticks=TICKS_BOTTOM
+	};
+	Bargraph_t bg_outa = {
+			.name="OUT",
+			.x1=20, .y1=84, .leds=31, .ys=15,.border=3,
+			.back_col=background, .var_col=variation, .tick_col=tick, .bar_col=bar,
+			.ticks=ticks, .num_ticks=7, .draw_ticks=TICKS_TOP
 	};
 	Bargraph_t bg_reda = {
-			.x1=10,.y1=30,.xs=140,.ys=15,
-			ticks_red, 8,
-	};
-
-	Bargraph_t bg_outa = {
-			.x1=10,.y1=50,.xs=140,.ys=15,
-			NULL, 8,
-	};
-	Bargraph_t bg_inb = {
-			.x1=10,.y1=70,.xs=140,.ys=15,
-			ticks, 8,
+			.name="RED",
+			.x1=20, .y1=43+25, .leds=31, .ys=15, .border=3,
+			.back_col=background, .var_col=variation, .tick_col=tick, .bar_col=bar,
+			.ticks=ticks_red, .num_ticks=7, .draw_ticks=TICKS_BOTTOM
 	};
 	Bargraph_t bg_redb = {
-			.x1=10,.y1=90,.xs=140,.ys=15,
-			ticks_red, 8,
+			.name="RED",
+			.x1=20,.y1=43,.leds=31,.ys=15,.border=3,
+			.back_col=background, .var_col=variation, .tick_col=tick, .bar_col=bar,
+			.ticks=ticks_red, .num_ticks=7, .draw_ticks=TICKS_TOP
 	};
 	Bargraph_t bg_outb = {
-			.x1=10,.y1=110,.xs=140,.ys=15,
-			NULL, 0,
+			.name="OUT",
+			.x1=20,.y1=2+25,.leds=31,.ys=15,.border=3,
+			.back_col=background, .var_col=variation, .tick_col=tick, .bar_col=bar,
+			.ticks=ticks, .num_ticks=7, .draw_ticks=TICKS_BOTTOM
+	};
+	Bargraph_t bg_inb = {
+			.name="IN",
+			.x1=20, .y1=2, .leds=31, .ys=15, .border=3,
+			.back_col=background, .var_col=variation, .tick_col=tick, .bar_col=bar,
+			.ticks=ticks, .num_ticks=7, .draw_ticks=TICKS_TOP
 	};
 
 	bargraph_init(&bg_ina);
-	bargraph_init(&bg_reda);
 	bargraph_init(&bg_outa);
-	bargraph_init(&bg_inb);
+	bargraph_init(&bg_reda);
 	bargraph_init(&bg_redb);
+	bargraph_init(&bg_inb);
 	bargraph_init(&bg_outb);
 
-	int db = 10;
+	int db = -50;
+
+	bargraph_set(&bg_ina, -40);
+	bargraph_set(&bg_outa, 20);
+	bargraph_set(&bg_inb, 19);
+	bargraph_set(&bg_outb, 23);
+
 	while(1)
 	{
-		int inc = 2;
+		int inc = 1;
 		while (1)
 		{
 			db += inc;
-			bargraph_set(db);
-			HAL_Delay(10);
-			if (db > 150)
+			bargraph_set(&bg_ina, db);
+			HAL_Delay(50);
+			if (db > 30)
 				break;
 		}
 		while (1)
 		{
 			db -= inc;
-			bargraph_set(db);
-			HAL_Delay(10);
-			if (db < 11)
+			bargraph_set(&bg_ina, db);
+			HAL_Delay(50);
+			if (db < -50)
 				break;
 		}
 	}

@@ -188,6 +188,11 @@ void SetFore(int f)
 	fore = f;
 }
 
+void SetBack(int f)
+{
+	back = f;
+}
+
 // Send a byte to the display
 void Data (uint8_t d) {
   digitalWrite(CS, LOW);
@@ -402,71 +407,11 @@ void PlotInt(int n, bool plus)
 	}
 }
 
-void TestChart () {
-  MoveTo(0,0);
-  DrawTo(xsize-1, 0); DrawTo(xsize-1, ysize-1);
-  DrawTo(0, ysize-1); DrawTo(0, 0);
-  scale = 8;
-  MoveTo((xsize-40)/2, (ysize-64)/2); PlotChar('F');
-  scale = 1;
-}
-
-// Demos **********************************************
-void BarChart ()
-{
-	int x1 = 15, y1 = 11; // Origin
-	// Text
-	MoveTo((xsize-x1-90)/2+x1, ysize-8);
-	PlotText((uint8_t *)PSTR("Sensor Readings"));
-	// Horizontal axis
-	int xinc = (xsize-x1)/20;
-	MoveTo(x1, y1);
-	DrawTo(xsize-1, y1);
-	for (int i=0; i<=20; i=i+4)
-	{
-		int mark = x1+i*xinc;
-		MoveTo(mark, y1);
-		DrawTo(mark, y1-2);
-		// Draw histogram
-		if (i != 20)
-		{
-			int bar = xinc*4/3;
-			fore = 0x001F;
-			for (int b=2; b>=0; b--)
-			{
-				MoveTo(mark+bar*b-b+1,y1+1); FillRect(bar, 5+random_up_to(ysize-y1-20));
-				fore = fore<<6;
-			}
-			fore = 0xFFFF;
-		}
-		if (i > 9) MoveTo(mark-7, y1-11); else MoveTo(mark-3, y1-11);
-		PlotInt(i, false);
-	}
-	// Vertical axis
-	int yinc = (ysize-y1)/20;
-	MoveTo(x1, y1); DrawTo(x1, ysize-1);
-	for (int i=0; i<=20; i=i+5)
-	{
-		int mark = y1+i*yinc;
-		MoveTo(x1, mark); DrawTo(x1-2, mark);
-		if (i > 9)
-			MoveTo(x1-15, mark-4);
-		else
-			MoveTo(x1-9, mark-4);
-		PlotInt(i, false);
-	}
-}
-
 // Setup **********************************************
 
 void setup() {
   InitDisplay();
   ClearDisplay();
   DisplayOn();
-  MoveTo(0,0);
 }
 
-void loop ()
-{
-	  BarChart();
-}
